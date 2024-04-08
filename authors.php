@@ -5,6 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="CSS/style.css">
     <title>Authors Page</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f4f4f4;
+}
+
+header {
+    background: #005A9C;
+    color: #ffffff;
+    padding-top: 30px;
+    padding-bottom: 15px;
+    padding-left: 20px;
+}
+
+header h1, header p {
+    margin: 0;
+}
+
+section {
+    padding: 20px;
+}
+
+#progress, .authors {
+    background: #ffffff;
+    margin: 20px;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+footer {
+    background: #333333;
+    color: #ffffff;
+    text-align: center;
+    padding: 10px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+footer a {
+    color: #ffffff;
+}
+
+.author {
+    margin-bottom: 20px;
+}
+
+.author h3 {
+    margin-top: 0;
+}
+
+.author img {
+    max-width: 100px;
+    border-radius: 50%;
+}
+
+.authors {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 80px;
+}
+
+a {
+    color: #005A9C;
+}
+
+a:hover {
+    text-decoration: none;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .authors {
+        grid-template-columns: repeat(2, 1fr); 
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .authors {
+        grid-template-columns: 1fr; 
+    }
+}
+    </style>
 </head>
 <body>
     <header>
@@ -34,7 +121,7 @@
         </div>
     </section>
     <footer>
-        <p>Back to the <a href="index.html">Main Page</a>.</p>
+        <p>Back to the <a href="index.php">Main Page</a>.</p>
     </footer>
 </body>
 </html>

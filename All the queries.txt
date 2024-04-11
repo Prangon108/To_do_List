@@ -1,0 +1,45 @@
+                          --All the queries
+
+-- Insert a new task with placeholders for dynamic data
+INSERT INTO tasks (description, due_date, category_id, priority, status) VALUES (?, ?, ?, ?, ?);
+
+-- Insert a new category with a placeholder for the category name
+INSERT INTO categories (name) VALUES (?);
+
+-- Delete a task by its ID
+DELETE FROM tasks WHERE id = ?;
+
+-- Delete all tasks associated with a specific category before deleting the category
+-- This maintains referential integrity by removing tasks linked to the category to be deleted
+DELETE FROM tasks WHERE category_id = ?;
+DELETE FROM categories WHERE id = ?;
+
+-- Update a task's status to 'completed' and set the completion date to the current date
+UPDATE tasks SET status = 'completed', completed_on = CURDATE() WHERE id = ?;
+
+-- Automatically set tasks' statuses to 'overdue' if their due dates are in the past
+UPDATE tasks SET status = 'overdue' WHERE due_date < CURDATE() AND status = 'active';
+
+-- Select queries for fetching tasks based on various criteria:
+
+-- Fetch overdue tasks, sorted by priority
+SELECT * FROM tasks WHERE due_date < CURDATE() AND status = 'overdue' ORDER BY priority ASC;
+
+-- Fetch tasks due today, sorted by priority
+SELECT * FROM tasks WHERE due_date = CURDATE() ORDER BY priority ASC;
+
+-- Fetch tasks due tomorrow, sorted by priority
+SELECT * FROM tasks WHERE due_date = CURDATE() + INTERVAL 1 DAY ORDER BY priority ASC;
+
+-- Fetch tasks due in the next 7 days, sorted by due date then priority
+SELECT * FROM tasks WHERE due_date > CURDATE() AND due_date <= CURDATE() + INTERVAL 7 DAY ORDER BY due_date ASC, priority ASC;
+
+-- Fetch all categories
+SELECT * FROM categories;
+
+-- Weekly report of completed tasks, grouped by completion date
+SELECT DATE(completed_on) AS completed_date, COUNT(*) AS task_count 
+FROM tasks 
+WHERE completed_on BETWEEN ? AND ? AND status = 'completed' 
+GROUP BY completed_date 
+ORDER BY completed_date ASC;

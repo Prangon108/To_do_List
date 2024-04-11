@@ -69,17 +69,19 @@ function fetchCategories($conn) {
     return $categories;
 }
 
-// Modified fetchWeeklyReport function to accept start and end dates
 function fetchWeeklyReport($conn, $startDate = null, $endDate = null) {
+    // Default to current week if no dates are provided
     if (!$startDate || !$endDate) {
         $startDate = date('Y-m-d', strtotime('monday this week'));
         $endDate = date('Y-m-d', strtotime('sunday this week'));
     }
 
-    $sql = "SELECT DATE(due_date) as completed_date, COUNT(*) as task_count 
+    // Query to count completed tasks per day within the date range
+    $sql = "SELECT DATE(due_date) AS completed_date, COUNT(*) AS task_count 
             FROM tasks 
             WHERE due_date BETWEEN ? AND ? AND status = 'completed' 
-            GROUP BY completed_date ORDER BY completed_date ASC";
+            GROUP BY completed_date 
+            ORDER BY completed_date ASC";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $startDate, $endDate);
@@ -87,11 +89,20 @@ function fetchWeeklyReport($conn, $startDate = null, $endDate = null) {
     $result = $stmt->get_result();
 
     $weeklyReport = [];
+    $totalCompleted = 0; // Initialize total completed tasks counter
+
+    // Fetch and accumulate daily counts
     while ($row = $result->fetch_assoc()) {
         $weeklyReport[$row['completed_date']] = $row['task_count'];
+        $totalCompleted += $row['task_count']; // Accumulate total
     }
+
+    // Optionally, add total count to the report
+    $weeklyReport['total'] = $totalCompleted;
+
     return $weeklyReport;
 }
+
 
 
 // Determine the current filter from the GET parameter or default to the combined overdue and due today view
@@ -163,17 +174,18 @@ if (isset($_GET['action'])) {
             $stmt->execute();
             break;
         case 'deleteCategory':
-            // Update tasks to no category before deleting the category
-            $sql = "UPDATE tasks SET category_id = NULL WHERE category_id = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            // Now delete the category
-            $sql = "DELETE FROM categories WHERE id = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            break;
+            // Delete all tasks associated with the category before deleting the category
+    $sql = "DELETE FROM tasks WHERE category_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+
+    // Now delete the category
+    $sql = "DELETE FROM categories WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    break;
     }
     header("Location: " . $_SERVER['PHP_SELF']); // Redirect to prevent URL manipulation
     exit;
@@ -203,7 +215,7 @@ if (isset($_GET['startDate']) && isset($_GET['endDate'])) {
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            background-color: white;
             margin: 0;
             padding: 20px;
         }
@@ -211,12 +223,20 @@ if (isset($_GET['startDate']) && isset($_GET['endDate'])) {
             max-width: 600px;
             margin: 0 auto;
             background: #fff;
+            background-color: #999;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h2 {
             color: #333;
+            text-align: center;
+        }
+        h1{
+            color: #ff851b;
+            text-align: center;
+            background-color: antiquewhite;
+            border-radius: 20%;
         }
         .task-form, .category-form {
             margin-bottom: 20px;
@@ -241,6 +261,13 @@ if (isset($_GET['startDate']) && isset($_GET['endDate'])) {
             list-style: none;
             padding: 0;
         }
+        .filters select {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    margin-left: 5px;
+}
         .task, .category {
             background-color: #f9f9f9;
             border: 1px solid #eee;
@@ -253,6 +280,12 @@ if (isset($_GET['startDate']) && isset($_GET['endDate'])) {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+        }
+        .firsth{
+            color: #ff4136;
+            text-align: center;
+            background-color: antiquewhite;
+            
         }
         .task-priority {
             display: inline-block;
@@ -289,7 +322,7 @@ footer a {
 <body>
 
 <div class="container">
-    <h2>Create Task</h2>
+    <h2 class="firsth">Create Task</h2>
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post" class="task-form">
         <input type="text" name="description" placeholder="Task description" required>
         <input type="date" name="dueDate" required>
@@ -314,11 +347,15 @@ footer a {
 
     <!-- Filter Selection Links -->
     <div class="filters">
-        <a href="?filter=default">Overdue & Due Today</a> | 
-        <a href="?filter=dueToday">Due Today</a> | 
-        <a href="?filter=dueTomorrow">Due Tomorrow</a> | 
-        <a href="?filter=dueNext7Days">Due Next 7 Days</a>
-    </div>
+    <label for="taskFilter">Filter Tasks:</label>
+    <select id="taskFilter" onchange="location = this.value;">
+        <option value="?filter=default" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'default') ? 'selected' : ''; ?>>Overdue & Due Today (By default)</option>
+        <option value="?filter=dueToday" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'dueToday') ? 'selected' : ''; ?>>Due Today</option>
+        <option value="?filter=dueTomorrow" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'dueTomorrow') ? 'selected' : ''; ?>>Due Tomorrow</option>
+        <option value="?filter=dueNext7Days" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'dueNext7Days') ? 'selected' : ''; ?>>Due Next 7 Days</option>
+    </select>
+</div>
+
 
     <!-- Tasks Display Based on Selected Filter -->
     <h2>Tasks</h2>
@@ -340,7 +377,8 @@ footer a {
         <?php endif; ?>
     </ul>
 
-   <!-- Weekly Report -->
+
+<!-- Weekly Report -->
 <h2>Weekly Report</h2>
 
 <!-- Date Range Selection Form -->
@@ -361,14 +399,17 @@ footer a {
         <p class="no-tasks">No tasks found within the selected date range.</p>
     <?php else: ?>
         <?php foreach ($weeklyReport as $date => $count): ?>
-            <li class="task">
-                <div>Date: <?php echo $date; ?> - Tasks Completed: <?php echo $count; ?></div>
-            </li>
+            <?php if($date !== 'total'): // Check to exclude the 'total' from being treated as a date ?>
+                <li class="task">
+                    <div>Date: <?php echo htmlspecialchars($date); ?> - Tasks Completed: <?php echo htmlspecialchars($count); ?></div>
+                </li>
+            <?php endif; ?>
         <?php endforeach; ?>
+        <!-- Display the total tasks completed -->
+        <li class="task"><strong>Total Tasks Completed:</strong> <?php echo htmlspecialchars($weeklyReport['total']); ?></li>
     <?php endif; ?>
 </ul>
 
-</div>
 
 
 
